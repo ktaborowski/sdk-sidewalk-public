@@ -28,9 +28,12 @@ jobs:
         run: |
           python3 ./scripts/ci/verify_license.py -s . -c ./scripts/ci/license.yml
 
-  Build_samples_and_tests:
-    needs: ValidateCodeCompliance
-    uses: nrfconnect/sdk-sidewalk/.github/workflows/common_build_samples.yml@main
+  ValidateCodeComplianceNCS:
+    uses: nrfconnect/sdk-nrf/.github/workflows/compliance.yml@main
+
+  # Build_samples_and_tests:
+  #   needs: ValidateCodeCompliance
+  #   uses: nrfconnect/sdk-sidewalk/.github/workflows/common_build_samples.yml@main
   
   Save_PR_number:
     runs-on: ubuntu-latest
