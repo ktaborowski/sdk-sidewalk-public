@@ -28,8 +28,9 @@ jobs:
         run: |
           python3 ./scripts/ci/verify_license.py -s . -c ./scripts/ci/license.yml
 
-  ValidateCodeComplianceNCS:
-    uses: nrfconnect/sdk-nrf/.github/workflows/compliance.yml@main
+  ComplianceTestNCS:
+    # TODO: Remove private fork dependency
+    uses: ktaborowski/sdk-sidewalk/.github/workflows/nrf_compliance.yml@main
 
   # Build_samples_and_tests:
   #   needs: ValidateCodeCompliance

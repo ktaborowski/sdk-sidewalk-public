@@ -1,0 +1,77 @@
+name: Compliance
+on:
+  workflow_call
+
+jobs:
+  Build_samples:
+    runs-on: ubuntu-latest
+    name: Run compliance checks on patch series (PR)
+    container:
+      image: nordicplayground/nrfconnect-sdk:main
+      options: --cpus 2
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: change_nrf_revision
+        if: ${{ inputs.change_nrf_revision }}
+        run: |
+          python3 -m pip install -r scripts/ci/requirements.txt
+          python3 scripts/ci/replace_nrf_revision_in_west.py west.yml
+
+      - name: Reconfigure west
+        run: |
+          cp -r ../sdk-sidewalk /workdir/sidewalk
+          cd /workdir
+          west config manifest.path sidewalk
+          west update --narrow -o=--depth=1
+
+      - name: Run Compliance Tests
+        continue-on-error: true
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        working-directory: /workdir/sidewalk
+        run: |
+          # debug
+          ls -la
+          git log --pretty=oneline origin/${BASE_REF}..HEAD
+          # For now we run KconfigBasic, but we should transition to Kconfig
+          $ZEPHYR_BASE/scripts/ci/check_compliance.py --annotate -e Kconfig \
+          -c origin/${BASE_REF}..
+
+      - name: upload-results
+        uses: actions/upload-artifact@v3
+        continue-on-error: true
+        with:
+          name: compliance.xml
+          path: /workdir/sidewalk/compliance.xml
+
+      - name: check-warns
+        working-directory: /workdir/sidewalk
+        shell: bash
+        run: |
+          echo "ZEPHYR_BASE = $ZEPHYR_BASE"
+          if [[ ! -s "compliance.xml" ]]; then
+            exit 1;
+          fi
+
+          files=($($ZEPHYR_BASE/scripts/ci/check_compliance.py -l))
+          for file in "${files[@]}"; do
+            f="${file}.txt"
+            if [[ -s $f ]]; then
+              errors=$(cat $f)
+              errors="${errors//'%'/'%25'}"
+              errors="${errors//$'\n'/'%0A'}"
+              errors="${errors//$'\r'/'%0D'}"
+              echo "::error file=${f}::$errors"
+              exit=1
+            fi
+          done
+
+          if [ "${exit}" == "1" ]; then
+            exit 1;
+          fi
