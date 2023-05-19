@@ -5,7 +5,7 @@
 import json
 import sys
 
-if (len(sys.argv) <= 3):
+if len(sys.argv) <= 3:
     print("not enough arguments")
     exit(0)
 
