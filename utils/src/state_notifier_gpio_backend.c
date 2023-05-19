@@ -21,11 +21,12 @@ static inline struct gpio_pin state_to_pin_mapper(enum application_state state)
 {
 	/* *INDENT-OFF* */
 	switch (state) {
-	#define X(name, port_obj, pin_num, ...)\
-		case APPLICATION_STATE_ENUM(name):\
-			return (struct gpio_pin){ .port =DEVICE_DT_GET(DT_NODELABEL(port_obj)), .pin = pin_num};
+#define X(name, port_obj, pin_num, ...)                                                            \
+	case APPLICATION_STATE_ENUM(name):                                                         \
+		return (struct gpio_pin){ .port = DEVICE_DT_GET(DT_NODELABEL(port_obj)),           \
+					  .pin = pin_num };
 		X_APPLICAITON_STATES
-	#undef X
+#undef X
 	}
 	/* *INDENT-ON* */
 	return (struct gpio_pin){ NULL, 0 };
@@ -57,8 +58,9 @@ static void gpio_initializer(const enum application_state state_id, const uint32
 void state_watch_init_gpio(struct notifier_ctx *ctx)
 {
 	if (!subscribe_for_state_change(ctx, state_change_handler_gpio)) {
-		__ASSERT(false,
-			 "failed to initialize the state watch, is the CONFIG_STATE_NOTIFIER_HANDLER_MAX too low ?");
+		__ASSERT(
+			false,
+			"failed to initialize the state watch, is the CONFIG_STATE_NOTIFIER_HANDLER_MAX too low ?");
 	}
 	enumerate_states(&ctx->app_state, gpio_initializer);
 }
