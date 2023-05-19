@@ -171,7 +171,7 @@ config SIDEWALK_DFU_SERVICE_USB
 endchoice # SIDEWALK_DFU_SERVICE
 endif # SIDEWALK_DFU
 
-rsource "Kconfig.dependecies"
+rsource "Kconfig.dependencies"
 rsource "utils/Kconfig"
 
 endif # SIDEWALK
