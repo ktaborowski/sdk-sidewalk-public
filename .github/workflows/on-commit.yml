@@ -7,9 +7,28 @@ on:
   workflow_dispatch:
 
 jobs:
-  build_samples_and_tests:
-    uses: nrfconnect/sdk-sidewalk/.github/workflows/common-build-samples.yml@main
+  test_actions:
+    runs-on: ubuntu-latest
+    container:
+      image: nordicplayground/nrfconnect-sdk:main
+      options: --cpus 2
+    env:
+      BASE_REF: ${{ github.base_ref }}
 
-  run_tests_on_dut:
-    needs: Build_samples_and_tests
-    uses: nrfconnect/sdk-sidewalk/.github/workflows/common-run-ut-on-dut.yml@main
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Prepare directory
+        run: |
+          git config --global --add safe.directory /__w/sdk-sidewalk/sdk-sidewalk
+          cp -r ../sdk-sidewalk /workdir/sidewalk
+          cd /workdir/sidewalk
+          #DEBUG
+          ls -l
+          git status
+          git remote -v
+          git log --oneline --graph  --all
