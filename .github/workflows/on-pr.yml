@@ -42,9 +42,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set ownership
+      - name: Prepare directory
         run: |
-          chown -R $(id -u):$(id -g) $PWD
+          cp -r ../sdk-sidewalk /workdir/sidewalk
+          cd /workdir/sidewalk
+          git config --global --add safe.directory /__w/sdk-sidewalk/sdk-sidewalk
+          # DEBUG
+          pwd
+          ls
+          echo $ZEPHYR_BASE
 
       - name: Run Compliance Tests
         run: |
