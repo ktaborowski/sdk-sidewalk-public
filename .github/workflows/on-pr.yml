@@ -28,6 +28,32 @@ jobs:
         run: |
           python3 ./scripts/ci/verify_license.py -s . -c ./scripts/ci/license.yml
 
+  validate_compliance_with_zephyr:
+    runs-on: ubuntu-latest
+    container:
+      image: nordicplayground/nrfconnect-sdk:main
+      options: --cpus 2
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Prepare directory
+        run: |
+          git config --global --add safe.directory /__w/sdk-sidewalk/sdk-sidewalk
+          cp -r ../sdk-sidewalk /workdir/sidewalk
+          cd /workdir/sidewalk
+
+      - name: Run Compliance Tests
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          cd /workdir/sidewalk
+          python3 scripts/ci/sid_compliance.py --annotate -m yamllint -m kconfigbasic -m devicetreebindings -m binaryfiles -m imagesize -m nits -m gitlint -m identity -c origin/${BASE_REF}..
+
   build_samples_and_tests:
     needs: validate_code_compliance
     uses: nrfconnect/sdk-sidewalk/.github/workflows/common-build-samples.yml@main
