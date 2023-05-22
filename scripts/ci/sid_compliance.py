@@ -9,7 +9,9 @@ from pathlib import Path
 ZEPHYR_BASE = os.environ.get('ZEPHYR_BASE')
 sys.path.insert(0, str(Path(ZEPHYR_BASE, 'scripts', 'ci').resolve()))
 
+# autopep8: off
 import check_compliance as cc
+# autopep8: on
 
 sidewalk_specials = [
     r"tools/sid_pc_link.*",
@@ -27,16 +29,20 @@ sidewalk_specials = [
     r"subsys/semtech/include/sx126x_config.h"
 ]
 
+
 def check_for_special_files(file):
     return not any(re.search(regex, file) for regex in sidewalk_specials)
+
 
 def python_filter(files):
     return list(filter(check_for_special_files, files))
 
+
 def get_files_overwrite(filter=None, paths=None):
     filter_arg = (f'--diff-filter={filter}',) if filter else ()
     paths_arg = ('--', *paths) if paths else ()
-    out = cc.git('diff', '--name-only', *filter_arg, cc.COMMIT_RANGE, *paths_arg)
+    out = cc.git('diff', '--name-only', *filter_arg,
+                 cc.COMMIT_RANGE, *paths_arg)
     files = out.splitlines()
     for file in list(files):
         if not os.path.isfile(os.path.join(cc.GIT_TOP, file)):
@@ -45,7 +51,9 @@ def get_files_overwrite(filter=None, paths=None):
 
     return python_filter(files)
 
+
 cc.get_files = get_files_overwrite
+
 
 def binaryfiles_run_overwrite(self):
     BINARY_ALLOW_PATHS = ("doc/", "lib/")
@@ -53,13 +61,14 @@ def binaryfiles_run_overwrite(self):
     BINARY_ALLOW_EXT = (".jpg", ".jpeg", ".png", ".svg", ".webp", ".a")
 
     for stat in cc.git("diff", "--numstat", "--diff-filter=A",
-                    cc.COMMIT_RANGE).splitlines():
+                       cc.COMMIT_RANGE).splitlines():
         added, deleted, fname = stat.split("\t")
         if added == "-" and deleted == "-":
             if (fname.startswith(BINARY_ALLOW_PATHS) and
-                fname.endswith(BINARY_ALLOW_EXT)):
+                    fname.endswith(BINARY_ALLOW_EXT)):
                 continue
             self.failure(f"Binary file not allowed: {fname}")
+
 
 cc.BinaryFiles.run = binaryfiles_run_overwrite
 
