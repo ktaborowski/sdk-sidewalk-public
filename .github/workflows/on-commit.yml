@@ -9,9 +9,9 @@ on:
 jobs:
   test_actions:
     runs-on: ubuntu-latest
-    container:
-      image: nordicplayground/nrfconnect-sdk:main
-      options: --cpus 2
+    # container:
+    #   image: nordicplayground/nrfconnect-sdk:main
+    #   options: --cpus 2
     env:
       BASE_REF: ${{ github.base_ref }}
 
@@ -24,11 +24,12 @@ jobs:
 
       - name: Prepare directory
         run: |
-          git config --global --add safe.directory /__w/sdk-sidewalk/sdk-sidewalk
-          cp -r ../sdk-sidewalk /workdir/sidewalk
-          cd /workdir/sidewalk
+          # git config --global --add safe.directory /__w/sdk-sidewalk/sdk-sidewalk
+          # cp -r ../sdk-sidewalk /workdir/sidewalk
+          # cd /workdir/sidewalk
           #DEBUG
           ls -l
           git status
           git remote -v
-          git log --oneline --graph  --all
+          git log --oneline --graph  -10
+          git diff --name-only origin/${BASE_REF}..HEAD
