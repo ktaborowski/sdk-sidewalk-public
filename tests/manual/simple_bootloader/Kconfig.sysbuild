@@ -1,0 +1,14 @@
+#
+# Copyright (c) 2023 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+#
+
+config NRF_DEFAULT_EMPTY
+	default y if BOARD_NRF5340DK_NRF5340_CPUAPP
+
+choice BOOTLOADER
+	default BOOTLOADER_MCUBOOT
+endchoice
+
+source "${ZEPHYR_BASE}/share/sysbuild/Kconfig"
