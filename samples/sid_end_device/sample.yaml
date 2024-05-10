@@ -2,6 +2,7 @@ sample:
   name: Sidewalk end device sample
   description: Sample implementing Amazon Sidewalk End Device
 common:
+  sysbuild: true
   build_only: true
   platform_allow:
     - nrf52840dk/nrf52840
