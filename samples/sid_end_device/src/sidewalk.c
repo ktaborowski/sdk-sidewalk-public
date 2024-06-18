@@ -200,7 +200,7 @@ static void state_sidewalk_entry(void *o)
 	}
 #endif /* CONFIG_SIDEWALK_FILE_TRANSFER_DFU */
 #ifdef CONFIG_SIDEWALK_FILE_TRANSFER
-	app_file_transfer_demo_init(sm->sid->handle);
+	app_file_transfer_demo_init(((sm_t *)o)->sid->handle);
 #endif /* CONFIG_SIDEWALK_FILE_TRANSFER */
 }
 
