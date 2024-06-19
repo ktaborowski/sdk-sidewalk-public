@@ -16,6 +16,7 @@ tests:
   sample.sidewalk.hello:
     extra_configs:
       - CONFIG_SID_END_DEVICE_PERSISTENT_LINK_MASK=y
+      - CONFIG_SIDEWALK_FILE_TRANSFER=y
     tags: Sidewalk hello
 
   sample.sidewalk.hello.release:
@@ -36,12 +37,6 @@ tests:
     extra_configs:
       - CONFIG_SIDEWALK_SUBGHZ_SUPPORT=n
     tags: Sidewalk hello BLE
-
-  sample.sidewalk.hello.sbdt:
-    extra_configs:
-      - CONFIG_SID_END_DEVICE_PERSISTENT_LINK_MASK=y
-      - CONFIG_SIDEWALK_FILE_TRANSFER=y
-    tags: Sidewalk hello
 
   sample.sidewalk.demo:
     extra_args:
