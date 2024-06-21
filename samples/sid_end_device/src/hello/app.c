@@ -230,7 +230,27 @@ static void app_button_handler(uint32_t event)
 	/* TODO: Remove
 	 * = TEST BEGIN = */
 #include <sbdt/file_transfer.h>
-	if (event == SID_EVENT_FILE_TRANSFER) {
+#include <sidewalk_dfu/nordic_dfu_img.h>
+
+	static size_t o = 0;
+	if (event == (SID_EVENT_LAST + 2)) {
+		LOG_INF("Cancel sbdt");
+
+		int err = nordic_dfu_img_cancel();
+		if (err) {
+			LOG_ERR("Fail to complete dfu %d", err);
+		}
+
+		o = 0;
+
+		LOG_INF("(Re)Init sbdt");
+		err = nordic_dfu_img_init();
+		if (err) {
+			LOG_ERR("Fail to init dfu %d", err);
+		}
+	}
+
+	if (event == (SID_EVENT_LAST + 1)) {
 		LOG_INF("Send dummy sbdt");
 
 		static char test_data[1024] = {
@@ -325,7 +345,6 @@ static void app_button_handler(uint32_t event)
 		LOG_INF("data addr %p", &test_data);
 		LOG_HEXDUMP_INF(test_data, 1024, "data:");
 
-		static size_t o = 0;
 		sidewalk_transfer_t *t =
 			(sidewalk_transfer_t *)sid_hal_malloc(sizeof(sidewalk_transfer_t));
 		if (!t) {
@@ -353,9 +372,10 @@ static void app_button_handler(uint32_t event)
 
 static int app_buttons_init(void)
 {
-	button_set_action_short_press(DK_BTN1, app_button_handler, SID_EVENT_SEND_MSG);
+	button_set_action_short_press(DK_BTN1, app_button_handler,
+				      /* TODO: Remove, test only! */ SID_EVENT_LAST + 1);
 	button_set_action_long_press(DK_BTN1, app_button_handler,
-				     /* TODO: Remove, test only! */ SID_EVENT_FILE_TRANSFER);
+				     /* TODO: Remove, test only! */ SID_EVENT_LAST + 2);
 	button_set_action_short_press(DK_BTN2, app_button_handler, SID_EVENT_CONNECT);
 	button_set_action_long_press(DK_BTN2, app_button_handler, SID_EVENT_FACTORY_RESET);
 	button_set_action(DK_BTN3, app_button_handler, SID_EVENT_LINK_SWITCH);
