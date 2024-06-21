@@ -189,12 +189,7 @@ static void state_sidewalk_entry(void *o)
 #endif /* CONFIG_SIDEWALK_AUTO_START */
 
 #ifdef CONFIG_SIDEWALK_FILE_TRANSFER_DFU
-	int dfu_err = nordic_dfu_img_init();
-	if (dfu_err) {
-		LOG_ERR("dfu img init fail %d", dfu_err);
-	}
-
-	dfu_err = boot_write_img_confirmed();
+	int dfu_err = boot_write_img_confirmed();
 	if (dfu_err) {
 		LOG_ERR("img confirm fail %d", dfu_err);
 	}
