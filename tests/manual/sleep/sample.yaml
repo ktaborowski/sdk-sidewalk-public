@@ -1,0 +1,12 @@
+sample:
+  name: sleep current measurement app
+  description: Simple app to measure idle current consumption on nRF54L
+tests:
+  sidewalk.test.sleep:
+    sysbuild: true
+    build_only: true
+    platform_allow: nrf52840dk/nrf52840 nrf54l15pdk/nrf54l15/cpuapp
+    integration_platforms:
+      - nrf52840dk/nrf52840
+      - nrf54l15pdk/nrf54l15/cpuapp
+    tags: Sidewalk
