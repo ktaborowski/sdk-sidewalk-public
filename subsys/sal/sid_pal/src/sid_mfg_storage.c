@@ -303,18 +303,17 @@ void sid_pal_mfg_store_init(sid_pal_mfg_store_region_t mfg_store_region)
 	LOG_HEXDUMP_INF(device_25519_prk, ECDH_PRK_SIZE, "mfg key 25519: ");
 	LOG_HEXDUMP_INF(device_p256r1_prk, ECDH_PRK_SIZE, "mfg key p256: ");
 
-	status = perepare_persistent_key(device_25519_prk, ECDH_PRK_SIZE, 255, PSA_KEY_USAGE_DERIVE,
-			     PSA_ALG_ECDH,
-			     (PSA_KEY_TYPE_ECC_KEY_PAIR_BASE | (PSA_ECC_FAMILY_MONTGOMERY)),
-			     1U);
+	status = perepare_persistent_key(device_25519_prk, ECDH_PRK_SIZE, 255,
+					 PSA_KEY_USAGE_SIGN_HASH, PSA_ALG_PURE_EDDSA,
+					 PSA_KEY_TYPE_ECC_KEY_PAIR(PSA_ECC_FAMILY_TWISTED_EDWARDS),
+					 1U);
 	LOG_HEXDUMP_INF(device_25519_prk, sizeof(device_25519_prk), "prepared ED25519: ");
 	if (status) {
 		LOG_ERR("key perpare ED25519 failed %d", status);
 	}
-	status = perepare_persistent_key(device_p256r1_prk, ECDH_PRK_SIZE, 256, PSA_KEY_USAGE_DERIVE,
-			     PSA_ALG_ECDH,
-			     (PSA_KEY_TYPE_ECC_KEY_PAIR_BASE | (PSA_ECC_FAMILY_SECP_R1)),
-			     2U);
+	status = perepare_persistent_key(device_p256r1_prk, ECDH_PRK_SIZE, 256,
+					 PSA_KEY_USAGE_SIGN_HASH, PSA_ALG_ECDSA(PSA_ALG_SHA_256),
+					 PSA_KEY_TYPE_ECC_KEY_PAIR(PSA_ECC_FAMILY_SECP_R1), 2U);
 	LOG_HEXDUMP_INF(device_p256r1_prk, sizeof(device_p256r1_prk), "prepared P256R1: ");
 	if (status) {
 		LOG_ERR("key perpare P256R1 failed %d", status);
