@@ -268,6 +268,14 @@ psa_status_t perepare_persistent_key(const uint8_t *key, size_t key_length, size
 		return status;
 	}
 
+	/* Make sure the key is not in memory anymore, has the same affect then resetting the device
+	 */
+	status = psa_purge_key(key_id);
+	if (status != PSA_SUCCESS) {
+		LOG_INF("psa_purge_key failed! (Error: %d)", status);
+		return -2;
+	}
+
 	/* After the key handle is acquired the attributes are not needed */
 	psa_reset_key_attributes(&attributes);
 
@@ -476,6 +484,10 @@ static psa_status_t aead_decrypt(psa_key_handle_t key_handle, sid_pal_aead_param
 
 sid_error_t sid_pal_crypto_init(void)
 {
+#ifdef CONFIG_TRUSTED_STORAGE_BACKEND_AEAD_KEY_DERIVE_FROM_HUK
+	write_huk();
+#endif /* CONFIG_TRUSTED_STORAGE_BACKEND_AEAD_KEY_DERIVE_FROM_HUK */
+
 	psa_status_t status = psa_crypto_init();
 
 	if (PSA_SUCCESS == status) {

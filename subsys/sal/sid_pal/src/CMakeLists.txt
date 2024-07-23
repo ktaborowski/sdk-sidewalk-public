@@ -32,7 +32,7 @@ zephyr_library_sources_ifdef(CONFIG_SIDEWALK_VENDOR_SERVICE sid_ble_vnd_service.
 
 zephyr_library_sources_ifdef(CONFIG_SIDEWALK_LOGGING_SERVICE sid_ble_log_service.c)
 
-zephyr_library_sources_ifdef(CONFIG_SIDEWALK_CRYPTO sid_crypto.c)
+zephyr_library_sources_ifdef(CONFIG_SIDEWALK_CRYPTO sid_crypto.c trusted_storage_init.c)
 
 zephyr_library_sources_ifdef(CONFIG_SIDEWALK_MFG_STORAGE sid_mfg_storage.c)
 
