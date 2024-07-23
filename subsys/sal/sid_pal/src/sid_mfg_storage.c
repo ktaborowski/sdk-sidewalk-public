@@ -24,6 +24,9 @@
 #include <sys/types.h>
 #include <zephyr/logging/log.h>
 
+#include <sid_crypto_internal.h>
+#define ECDH_PRK_SIZE 32
+
 LOG_MODULE_REGISTER(sid_mfg, CONFIG_SIDEWALK_LOG_LEVEL);
 
 // Manufacturing version define
@@ -138,6 +141,8 @@ static bool sid_pal_mfg_store_search_for_tag(uint16_t tag,
 	uint16_t current_tag, length;
 	uint8_t type_length_raw[MFG_STORE_TLV_HEADER_SIZE] = { 0 };
 
+	bool found = false;
+
 	while (1) {
 		int rc = flash_read(flash_dev, address, type_length_raw, MFG_STORE_TLV_HEADER_SIZE);
 		if (0 != rc) {
@@ -147,29 +152,29 @@ static bool sid_pal_mfg_store_search_for_tag(uint16_t tag,
 		current_tag = (type_length_raw[0] << 8) + type_length_raw[1];
 		length = (type_length_raw[2] << 8) + type_length_raw[3];
 
+		if (current_tag == MFG_STORE_TLV_TAG_EMPTY) {
+			break;
+		}
+
 		if (current_tag == tag) {
 			tlv_info->tag = tag;
 			tlv_info->length = length;
 			tlv_info->offset = address;
-			return true;
-		} else {
-			if (current_tag == MFG_STORE_TLV_TAG_EMPTY) {
-				break;
-			}
-			/*
-             * Go to the next TLV.
-             * Since data is written to flash with data aligned to 4, we must take this
-             * into account if the data length is not a multiple of 4.
-             */
-			address += (MFG_STORE_TLV_HEADER_SIZE + EXPAND_TO_MULTIPLE_WORD(length));
-			// Check that we have not reached the end of the storage
-			if ((uintptr_t)(address + MFG_STORE_TLV_HEADER_SIZE + MFG_WORD_SIZE) >
-			    nrf_mfg_store_region.addr_end) {
-				break;
-			}
+			found = true;
+		}
+		/*
+		 * Go to the next TLV.
+		 * Since data is written to flash with data aligned to 4, we must take this
+		 * into account if the data length is not a multiple of 4.
+		 */
+		address += (MFG_STORE_TLV_HEADER_SIZE + EXPAND_TO_MULTIPLE_WORD(length));
+		// Check that we have not reached the end of the storage
+		if ((uintptr_t)(address + MFG_STORE_TLV_HEADER_SIZE + MFG_WORD_SIZE) >
+		    nrf_mfg_store_region.addr_end) {
+			break;
 		}
 	}
-	return false;
+	return found;
 }
 
 /**
@@ -283,6 +288,57 @@ void sid_pal_mfg_store_init(sid_pal_mfg_store_region_t mfg_store_region)
 	if (!flash_dev) {
 		LOG_ERR("Flash device is not found.");
 	}
+
+	/* Replace raw keys with IDs */
+	uint8_t device_25519_prk[ECDH_PRK_SIZE];
+	uint8_t device_p256r1_prk[ECDH_PRK_SIZE];
+	psa_key_handle_t device_25519_prk_handle;
+	psa_key_handle_t device_p256r1_prk_handle;
+	psa_status_t status;
+	int32_t err;
+
+	sid_pal_mfg_store_read(SID_PAL_MFG_STORE_DEVICE_PRIV_ED25519, device_25519_prk,
+			       SID_PAL_MFG_STORE_DEVICE_PRIV_ED25519_SIZE);
+	sid_pal_mfg_store_read(SID_PAL_MFG_STORE_DEVICE_PRIV_P256R1, device_p256r1_prk,
+			       SID_PAL_MFG_STORE_DEVICE_PRIV_P256R1_SIZE);
+
+	LOG_HEXDUMP_INF(device_25519_prk, ECDH_PRK_SIZE, "mfg key 25519: ");
+	LOG_HEXDUMP_INF(device_p256r1_prk, ECDH_PRK_SIZE, "mfg key p256: ");
+
+	status = prepare_key(device_25519_prk, ECDH_PRK_SIZE, 255, PSA_KEY_USAGE_DERIVE,
+			     PSA_ALG_ECDH,
+			     (PSA_KEY_TYPE_ECC_KEY_PAIR_BASE | (PSA_ECC_FAMILY_MONTGOMERY)),
+			     &device_25519_prk_handle);
+	LOG_HEXDUMP_INF(device_25519_prk, sizeof(device_25519_prk), "ED25519: ");
+	if (status) {
+		LOG_ERR("key perpare ED25519 failed %d", status);
+	}
+	status = prepare_key(device_p256r1_prk, ECDH_PRK_SIZE, 256, PSA_KEY_USAGE_DERIVE,
+			     PSA_ALG_ECDH,
+			     (PSA_KEY_TYPE_ECC_KEY_PAIR_BASE | (PSA_ECC_FAMILY_SECP_R1)),
+			     &device_p256r1_prk_handle);
+	LOG_HEXDUMP_INF(device_p256r1_prk, sizeof(device_p256r1_prk), "P256R1: ");
+	if (status) {
+		LOG_ERR("key perpare P256R1 failed %d", status);
+	}
+
+	err = sid_pal_mfg_store_write(SID_PAL_MFG_STORE_DEVICE_PRIV_ED25519, device_25519_prk,
+				      SID_PAL_MFG_STORE_DEVICE_PRIV_ED25519_SIZE);
+	if (err) {
+		LOG_ERR("mfg write ED25519 failed %d", err);
+	}
+	err = sid_pal_mfg_store_write(SID_PAL_MFG_STORE_DEVICE_PRIV_P256R1, device_p256r1_prk,
+				      SID_PAL_MFG_STORE_DEVICE_PRIV_P256R1_SIZE);
+	if (err) {
+		LOG_ERR("mfg write P256R1 failed %d", err);
+	}
+
+	sid_pal_mfg_store_read(SID_PAL_MFG_STORE_DEVICE_PRIV_ED25519, device_25519_prk,
+			       SID_PAL_MFG_STORE_DEVICE_PRIV_ED25519_SIZE);
+	LOG_HEXDUMP_INF(device_25519_prk, sizeof(device_25519_prk), "ED25519: ");
+	sid_pal_mfg_store_read(SID_PAL_MFG_STORE_DEVICE_PRIV_P256R1, device_p256r1_prk,
+			       SID_PAL_MFG_STORE_DEVICE_PRIV_P256R1_SIZE);
+	LOG_HEXDUMP_INF(device_p256r1_prk, sizeof(device_p256r1_prk), "P256R1: ");
 }
 
 void sid_pal_mfg_store_deinit(void)
@@ -309,7 +365,8 @@ int32_t sid_pal_mfg_store_write(uint16_t value, const uint8_t *buffer, uint16_t 
 
 		if (sid_pal_mfg_store_search_for_tag(value, &tlv_info)) {
 			// The tag value already exists. We can't write duplicate
-			return -1;
+			LOG_WRN("Tag alreay exist");
+			// return -1;
 		}
 
 		// Search for the end of data

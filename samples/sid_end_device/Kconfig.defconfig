@@ -88,3 +88,7 @@ config SPIN_VALIDATE
 
 config PARTITION_MANAGER_ENABLED
 	default y
+
+
+config SIDEWALK_MFG_STORAGE_WRITE
+	default y

@@ -17,6 +17,8 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/logging/log_ctrl.h>
 
+#include <sid_crypto_internal.h>
+
 LOG_MODULE_REGISTER(sid_crypto, CONFIG_SIDEWALK_CRYPTO_LOG_LEVEL);
 
 #define MAGIC_KEY 0x123caffeU
@@ -72,9 +74,9 @@ static bool is_initialized = false;
 static const uint8_t secpxxx_key_prefix[SECPxxx_KEY_PREFIX_LEN] = { 0x04 };
 
 static sid_error_t get_error(psa_status_t psa_erc, const char *func_name);
-static psa_status_t prepare_key(const uint8_t *key, size_t key_length, size_t key_bits,
-				psa_key_usage_t usage_flags, psa_algorithm_t alg,
-				psa_key_type_t type, psa_key_handle_t *key_handle);
+// static psa_status_t prepare_key(const uint8_t *key, size_t key_length, size_t key_bits,
+// 				psa_key_usage_t usage_flags, psa_algorithm_t alg,
+// 				psa_key_type_t type, psa_key_handle_t *key_handle);
 static psa_status_t aes_execute(psa_cipher_operation_t *operation, sid_pal_aes_params_t *params);
 static psa_status_t aes_encrypt(psa_key_handle_t key_handle, sid_pal_aes_params_t *params);
 static psa_status_t aes_decrypt(psa_key_handle_t key_handle, sid_pal_aes_params_t *params);
@@ -149,9 +151,9 @@ static size_t psa_keys_id_last;
  *
  * @return PSA_SUCCESS when success, otherwise error code.
  */
-static psa_status_t prepare_key(const uint8_t *key, size_t key_length, size_t key_bits,
-				psa_key_usage_t usage_flags, psa_algorithm_t alg,
-				psa_key_type_t type, psa_key_handle_t *key_handle)
+psa_status_t prepare_key(const uint8_t *key, size_t key_length, size_t key_bits,
+			 psa_key_usage_t usage_flags, psa_algorithm_t alg, psa_key_type_t type,
+			 psa_key_handle_t *key_handle)
 {
 	psa_key_attributes_t attributes = PSA_KEY_ATTRIBUTES_INIT;
 	psa_status_t status;
@@ -166,6 +168,8 @@ static psa_status_t prepare_key(const uint8_t *key, size_t key_length, size_t ke
 		if (new_key->magic == MAGIC_KEY) {
 			LOG_INF("found psa key id: %d", new_key->id);
 			memcpy(key_handle, &psa_keys[new_key->id], sizeof(psa_key_handle_t));
+			LOG_HEXDUMP_INF(key_handle, sizeof(psa_key_handle_t), "key handle: ");
+
 			return PSA_SUCCESS;
 		}
 	}
@@ -177,10 +181,13 @@ static psa_status_t prepare_key(const uint8_t *key, size_t key_length, size_t ke
 	psa_set_key_bits(&attributes, key_bits);
 
 	status = psa_import_key(&attributes, key, key_length, &psa_keys[psa_keys_id_last]);
+	LOG_HEXDUMP_INF(&psa_keys[psa_keys_id_last], sizeof(psa_key_handle_t), "key handle: ");
+
 	if (PSA_SUCCESS == status) {
 		psa_reset_key_attributes(&attributes);
 
 		LOG_WRN("found new key!");
+		LOG_INF("key ptr %p", (void *)key);
 		LOG_HEXDUMP_INF(key, key_length, "key value: ");
 		memset(key, 0, key_length);
 
@@ -193,6 +200,8 @@ static psa_status_t prepare_key(const uint8_t *key, size_t key_length, size_t ke
 		LOG_INF("new key id: %d", new_key->id);
 	} else {
 		LOG_ERR("key import fail!");
+		LOG_HEXDUMP_INF(key, key_length, "key value: ");
+
 		key_handle = NULL;
 	}
 
