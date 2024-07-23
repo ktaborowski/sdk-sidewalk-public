@@ -19,6 +19,8 @@
 
 LOG_MODULE_REGISTER(sid_crypto, CONFIG_SIDEWALK_CRYPTO_LOG_LEVEL);
 
+#define MAGIC_KEY 0x123caffeU
+
 #define BYTE_TO_BITS(_byte) (_byte << 3)
 #define BITS_TO_BYTE(_bits) (_bits >> 3)
 
@@ -127,6 +129,13 @@ static sid_error_t get_error(psa_status_t psa_erc, const char *func_name)
 	return sid_erc;
 }
 
+typedef struct {
+	uint32_t magic;
+	size_t id;
+} sid_crypto_key_t;
+
+static psa_key_handle_t psa_keys[1024];
+static size_t psa_keys_id_last;
 /**
  * @brief The function prepares binaries key for use in cryptographic algorithms.
  *
@@ -151,15 +160,40 @@ static psa_status_t prepare_key(const uint8_t *key, size_t key_length, size_t ke
 		return PSA_ERROR_DATA_INVALID;
 	}
 
+	if (key_length >= sizeof(sid_crypto_key_t)) {
+		sid_crypto_key_t *new_key = (sid_crypto_key_t *)key;
+
+		if (new_key->magic == MAGIC_KEY) {
+			LOG_INF("found psa key id: %d", new_key->id);
+			memcpy(key_handle, &psa_keys[new_key->id], sizeof(psa_key_handle_t));
+			return PSA_SUCCESS;
+		}
+	}
+
 	psa_set_key_usage_flags(&attributes, usage_flags);
 	psa_set_key_lifetime(&attributes, PSA_KEY_LIFETIME_VOLATILE);
 	psa_set_key_algorithm(&attributes, alg);
 	psa_set_key_type(&attributes, type);
 	psa_set_key_bits(&attributes, key_bits);
 
-	status = psa_import_key(&attributes, key, key_length, key_handle);
+	status = psa_import_key(&attributes, key, key_length, &psa_keys[psa_keys_id_last]);
 	if (PSA_SUCCESS == status) {
 		psa_reset_key_attributes(&attributes);
+
+		LOG_WRN("found new key!");
+		LOG_HEXDUMP_INF(key, key_length, "key value: ");
+		memset(key, 0, key_length);
+
+		sid_crypto_key_t *new_key = (sid_crypto_key_t *)key;
+		new_key->magic = MAGIC_KEY;
+		new_key->id = psa_keys_id_last;
+		psa_keys_id_last++;
+
+		memcpy(key_handle, &psa_keys[new_key->id], sizeof(psa_key_handle_t));
+		LOG_INF("new key id: %d", new_key->id);
+	} else {
+		LOG_ERR("key import fail!");
+		key_handle = NULL;
 	}
 
 	return status;
@@ -499,9 +533,9 @@ sid_error_t sid_pal_crypto_hmac(sid_pal_hmac_params_t *params)
 			}
 		}
 
-		if (PSA_SUCCESS != psa_destroy_key(key_handle)) {
-			LOG_WRN("Destroy key failed!");
-		}
+		// if (PSA_SUCCESS != psa_destroy_key(key_handle)) {
+		// 	LOG_WRN("Destroy key failed!");
+		// }
 	}
 
 	return get_error(status, __func__);
@@ -576,9 +610,9 @@ sid_error_t sid_pal_crypto_aes_crypt(sid_pal_aes_params_t *params)
 			return SID_ERROR_INVALID_ARGS;
 		}
 
-		if (PSA_SUCCESS != psa_destroy_key(key_handle)) {
-			LOG_WRN("Destroy key failed!");
-		}
+		// if (PSA_SUCCESS != psa_destroy_key(key_handle)) {
+		// 	LOG_WRN("Destroy key failed!");
+		// }
 	}
 
 	return get_error(status, __func__);
@@ -649,9 +683,9 @@ sid_error_t sid_pal_crypto_aead_crypt(sid_pal_aead_params_t *params)
 			return SID_ERROR_INVALID_ARGS;
 		}
 
-		if (PSA_SUCCESS != psa_destroy_key(key_handle)) {
-			LOG_WRN("Destroy key failed!");
-		}
+		// if (PSA_SUCCESS != psa_destroy_key(key_handle)) {
+		// 	LOG_WRN("Destroy key failed!");
+		// }
 	}
 
 	return get_error(status, __func__);
@@ -733,9 +767,9 @@ sid_error_t sid_pal_crypto_ecc_dsa(sid_pal_dsa_params_t *params)
 			return SID_ERROR_INVALID_ARGS;
 		}
 
-		if (PSA_SUCCESS != psa_destroy_key(key_handle)) {
-			LOG_WRN("Destroy key failed!");
-		}
+		// if (PSA_SUCCESS != psa_destroy_key(key_handle)) {
+		// 	LOG_WRN("Destroy key failed!");
+		// }
 	}
 
 	return get_error(status, __func__);
@@ -798,9 +832,9 @@ sid_error_t sid_pal_crypto_ecc_ecdh(sid_pal_ecdh_params_t *params)
 					       &out_len);
 	}
 
-	if (PSA_SUCCESS != psa_destroy_key(priv_key_handle)) {
-		LOG_WRN("Destroy key failed!");
-	}
+	// if (PSA_SUCCESS != psa_destroy_key(priv_key_handle)) {
+	// 	LOG_WRN("Destroy key failed!");
+	// }
 
 	return get_error(status, __func__);
 }
@@ -877,9 +911,9 @@ sid_error_t sid_pal_crypto_ecc_key_gen(sid_pal_ecc_key_gen_params_t *params)
 				(PSA_SUCCESS == status) ? "success." : "failed!");
 		}
 
-		if (PSA_SUCCESS != psa_destroy_key(keys_handle)) {
-			LOG_WRN("Destroy key failed!");
-		}
+		// if (PSA_SUCCESS != psa_destroy_key(keys_handle)) {
+		// 	LOG_WRN("Destroy key failed!");
+		// }
 	}
 	psa_reset_key_attributes(&key_attributes);
 
