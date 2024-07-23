@@ -208,6 +208,74 @@ psa_status_t prepare_key(const uint8_t *key, size_t key_length, size_t key_bits,
 	return status;
 }
 
+psa_status_t perepare_persistent_key(const uint8_t *key, size_t key_length, size_t key_bits,
+				     psa_key_usage_t usage_flags, psa_algorithm_t alg,
+				     psa_key_type_t type, psa_key_id_t key_id)
+{
+	psa_status_t status;
+
+	if (!key_id) {
+		return PSA_ERROR_DATA_INVALID;
+	}
+
+	if (key_length >= sizeof(sid_crypto_key_t)) {
+		sid_crypto_key_t *new_key = (sid_crypto_key_t *)key;
+
+		if (new_key->magic == MAGIC_KEY) {
+			LOG_INF("found psa key id: %d", new_key->id);
+			if (key_id == psa_keys[new_key->id]) {
+				LOG_INF("persistent hey id (handle): %d", key_id);
+			} else {
+				LOG_ERR("key id fialed, expected %d, was %d", key_id,
+					psa_keys[new_key->id]);
+				psa_keys[new_key->id] = key_id;
+			}
+
+			return PSA_SUCCESS;
+		}
+	}
+
+	LOG_INF("Preparing persistent key...");
+
+	/* Configure the key attributes */
+	psa_key_attributes_t attributes = PSA_KEY_ATTRIBUTES_INIT;
+
+	psa_set_key_usage_flags(&attributes, usage_flags);
+	psa_set_key_algorithm(&attributes, alg);
+	psa_set_key_type(&attributes, type);
+	psa_set_key_bits(&attributes, key_bits);
+
+	/* Persistent key specific settings */
+	psa_set_key_lifetime(&attributes, PSA_KEY_LIFETIME_PERSISTENT);
+	psa_set_key_id(&attributes, key_id);
+
+	status = psa_import_key(&attributes, key, key_length, &psa_keys[psa_keys_id_last]);
+	if (PSA_SUCCESS == status) {
+		LOG_WRN("found new key!");
+		LOG_INF("key ptr %p", (void *)key);
+		LOG_INF("key id %d", (int)psa_keys[psa_keys_id_last]);
+		LOG_HEXDUMP_INF(key, key_length, "key value: ");
+		memset(key, 0, key_length);
+
+		sid_crypto_key_t *new_key = (sid_crypto_key_t *)key;
+		new_key->magic = MAGIC_KEY;
+		new_key->id = psa_keys_id_last;
+		psa_keys_id_last++;
+
+		LOG_INF("new key id: %d", new_key->id);
+	} else {
+		LOG_INF("psa_import_key failed! (Error: %d)", status);
+		return status;
+	}
+
+	/* After the key handle is acquired the attributes are not needed */
+	psa_reset_key_attributes(&attributes);
+
+	LOG_INF("Persistent key generated successfully!");
+
+	return status;
+}
+
 /**
  * @brief Perform the AES algorithm.
  * NOTE: The algorithm must be set before calling this function.
@@ -412,7 +480,7 @@ sid_error_t sid_pal_crypto_init(void)
 
 	if (PSA_SUCCESS == status) {
 		is_initialized = true;
-		LOG_DBG("Init success!");
+		LOG_INF("Init success!");
 	} else {
 		LOG_ERR("Init failed! (sts: %d)", status);
 	}
