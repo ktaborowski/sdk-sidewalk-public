@@ -17,6 +17,8 @@
 #include <zephyr/logging/log.h>
 #include <settings_utils.h>
 
+uint16_t secret_keys[] = { 4, 5, 9, 10, 11, 28, 30, 48 };
+
 LOG_MODULE_REGISTER(sid_storage, CONFIG_SIDEWALK_LOG_LEVEL);
 
 sid_error_t sid_pal_storage_kv_init()
@@ -46,9 +48,18 @@ sid_error_t sid_pal_storage_kv_record_get(uint16_t group, uint16_t key, void *p_
 	if (!p_data) {
 		return SID_ERROR_NULL_POINTER;
 	}
+
 	char serial[32] = { 0 };
 	settings_serialize_group_key(serial, sizeof(serial), group, key);
 	int rc = settings_utils_load_immediate_value(serial, p_data, len);
+
+	for (size_t i = 0; i < sizeof(secret_keys)/sizeof(secret_keys[0]); i++) {
+		if (secret_keys[i] == key){
+			LOG_WRN("Secret key in use! %d (g %d)", key, group);
+			LOG_HEXDUMP_INF(p_data, len, "kv: ");
+		}
+	}
+
 	if (rc <= 0)
 		return SID_ERROR_NOT_FOUND;
 	else
