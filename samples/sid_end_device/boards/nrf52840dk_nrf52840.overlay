@@ -83,8 +83,4 @@
 			label = "semtech_sx1262 DIO1";
 		};
 	};
-
-	chosen {
-		nordic,pm-ext-flash = &mx25r64;
-	};
 };
