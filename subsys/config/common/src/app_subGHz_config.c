@@ -119,8 +119,14 @@ static radio_sx126x_device_config_t radio_sx1262_cfg = {
 	.pa_cfg_callback = radio_sx1262_pa_cfg,
 
 	.tcxo = {
-        	.ctrl = SX126X_TCXO_CTRL_NONE,
-    	},
+#if defined(CONFIG_BOARD_RAK4631)
+		.ctrl = SX126X_TCXO_CTRL_DIO3,
+		.voltage = RADIO_SX126X_TCXO_CTRL_3_3V,
+		.timeout = 320,
+#else
+		.ctrl = SX126X_TCXO_CTRL_NONE,
+#endif /* CONFIG_BOARD_RAK4631 */
+	},
 
 	.trim_cap_val_callback = radio_sx1262_trim_val,
 
@@ -158,13 +164,12 @@ const radio_sx126x_device_config_t *get_radio_cfg(void)
 	radio_sx1262_cfg.gpio_rf_sw_ena =
 		sid_gpio_utils_register_gpio((struct gpio_dt_spec)GPIO_DT_SPEC_GET_OR(
 			DT_NODELABEL(semtech_sx1262_antenna_enable_gpios), gpios, INVALID_DT_GPIO));
-#if CONFIG_SOC_NRF52840
+#if defined(CONFIG_SOC_NRF52840) && !defined(CONFIG_BOARD_RAK4631)
 	radio_sx1262_cfg.bus_selector.client_selector =
 		sid_gpio_utils_register_gpio((struct gpio_dt_spec)GPIO_DT_SPEC_GET_OR(
 			DT_NODELABEL(nrfx_spi_cs), gpios, INVALID_DT_GPIO));
 	radio_sx1262_cfg.bus_selector.speed_hz = NRF_SPI_FREQ_8M;
 #else /* CONFIG_SOC_NRF52840 */
-
 	radio_sx1262_cfg.bus_selector.client_selector = 
 		sid_gpio_utils_register_gpio(
 			(struct gpio_dt_spec)GPIO_DT_SPEC_GET_OR(DT_NODELABEL(sid_semtech), cs_gpios, INVALID_DT_GPIO));
